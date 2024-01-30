@@ -1,0 +1,682 @@
+import json
+from collections import Counter
+import re
+from utils import create_users_from_json, create_graph_from_users
+from visualizations import visualize_hash_table, visualize_user_graph_with_networkx
+from data_structures import HashTable,MyLinkedList,LinkedList,DictionaryLinkedList,MySet
+from interests_utils import get_top_words,insert_user_to_interests_hash_table,oneri_uret
+from print import extract_interests_and_add_to_hashtable,write_interests_to_file,write_recommendations_to_file
+from dfs import extract_hashtags,dfs_all_users_by_regions,process_regions_and_hashtags
+
+def main():
+    # JSON dosyasını aç ve oku
+    with open('deneme2.json', 'r', encoding='utf-8') as file:
+        json_data = json.load(file)
+
+    # Kullanıcılar için HashTable oluştur
+    users_hash_table = HashTable(1000)
+
+    # İlgi alanları için HashTable'lar saklayacak bir HashTable oluştur
+    interests_hash_tables = HashTable(50)
+
+    # JSON verilerini kullanarak kullanıcıları oluştur
+    create_users_from_json(json_data, users_hash_table)
+    print("Users hash table created")
+    ###########################################
+    # Kullanıcıların bölgesel olarak tweet'lerinden ilgi alanlarını çıkar ve ilgili HashTable'a ekle
+    # process_regions_and_hashtags(users_hash_table)
+
+    # ##########################################
+    # # Kullanıcıların tweet'lerinden ilgi alanlarını çıkar ve ilgili HashTable'a ekle
+    # extract_interests_and_add_to_hashtable(users_hash_table, interests_hash_tables)
+    # # İlgi alanlarına göre HashTable'ları ve kullanıcıları dosyaya yaz
+    # write_interests_to_file(interests_hash_tables, 'interests_utils.txt')
+    # # Önerileri dosyaya yaz
+    # write_recommendations_to_file(interests_hash_tables, users_hash_table, 'analysis.txt')
+
+    ##########################################
+    # # Hash tablosunu ve grafiği görselleştir
+    # #visualize_hash_table(users_hash_table)
+    graph = create_graph_from_users(users_hash_table)
+    print("Graph created")
+    visualize_user_graph_with_networkx(graph,'cherylweiss')
+
+if __name__ == "__main__":
+    main()
+
+
+class Node:
+    def __init__(self, data):
+        self.key, self.value = data
+        self.next = None
+
+class MyLinkedList:
+    def __init__(self):
+        self.head = None
+
+    def append(self, value):
+        new_node = Node((None, value))  
+        if not self.head:
+            self.head = new_node
+            return
+        last_node = self.head
+        while last_node.next:
+            last_node = last_node.next
+        last_node.next = new_node
+        
+class LinkedList:
+    def __init__(self):
+        self.head = None
+
+    def insert(self, key, value):
+        new_node = Node((key, value))
+        new_node.next = self.head
+        self.head = new_node
+
+    def find(self, key):
+        cur_node = self.head
+        while cur_node:
+            if cur_node.key == key:
+                return cur_node.value
+            cur_node = cur_node.next
+        return None
+
+    def delete(self, key):
+        cur_node = self.head
+        prev_node = None
+        while cur_node:
+            if cur_node.key == key:
+                if prev_node:
+                    prev_node.next = cur_node.next
+                else:
+                    self.head = cur_node.next
+                return
+            prev_node = cur_node
+            cur_node = cur_node.next
+
+    def __str__(self):
+        output = ""
+        cur_node = self.head
+        while cur_node:
+            node_representation = str((cur_node.key, cur_node.value))
+            output += node_representation
+            if cur_node.next:  
+                output += " -> "
+            cur_node = cur_node.next
+        return output
+    
+    def __iter__(self):
+        self.current = self.head  
+        return self
+
+    def __next__(self):
+        if self.current is None:
+            raise StopIteration
+        current_key = self.current.key
+        self.current = self.current.next
+        return current_key
+    
+class KeyValuePair:
+    def __init__(self, key, value):
+        self.key = key
+        self.value = value
+        self.next = None
+
+class DictionaryLinkedList:
+    def __init__(self):
+        self.head = None
+
+    def insert(self, key, value):
+        new_node = KeyValuePair(key, value)
+        new_node.next = self.head
+        self.head = new_node
+
+    def find(self, key):
+        current = self.head
+        while current:
+            if current.key == key:
+                return current.value
+            current = current.next
+        return None
+
+    def __str__(self):
+        output = ""
+        current = self.head
+        while current:
+            output += f"{current.key}: {current.value}\n"
+            current = current.next
+        return output
+    
+    def keys(self):
+        current = self.head
+        keys = LinkedList()
+        while current:
+            keys.insert(current.key, None)  
+            current = current.next
+        return keys
+
+    def values(self):
+        current = self.head
+        values = LinkedList()
+        while current:
+            values.insert(None, current.value)  
+            current = current.next
+        return values
+    
+    def items(self):
+        current = self.head
+        while current:
+            yield current.key, current.value
+            current = current.next
+
+    def __iter__(self):
+        current = self.head
+        while current:
+            yield current.key
+            current = current.next
+
+class HashTable:
+    def __init__(self, size):
+        self.size = size
+        self.hash_table = [LinkedList() for _ in range(self.size)]
+
+    def simple_hash(self, key):
+        hash_value = 0
+        for char in key:
+            hash_value = (hash_value * 31 + ord(char)) % self.size
+        return hash_value
+ 
+    def set_val(self, key, val):
+        hashed_key = self.simple_hash(key)
+        self.hash_table[hashed_key].insert(key, val)
+ 
+    def get_val(self, key):
+        hashed_key = self.simple_hash(key)
+        return self.hash_table[hashed_key].find(key)
+
+    def delete_val(self, key):
+        hashed_key = self.simple_hash(key)
+        self.hash_table[hashed_key].delete(key)
+
+    def get_all_values_as_linked_list(self):
+            all_values_linked_list = LinkedList()
+            for linked_list in self.hash_table:
+                current_node = linked_list.head
+                while current_node:
+                    all_values_linked_list.insert(current_node.key, current_node.value)
+                    current_node = current_node.next
+            return all_values_linked_list
+
+    def __iter__(self):
+        for linked_list in self.hash_table:
+            current_node = linked_list.head
+            while current_node:
+                yield current_node.key
+                current_node = current_node.next
+    
+    def insert(self, key, value):
+        
+        index = self.hash_function(key)
+                
+    def __getitem__(self, key):
+        hashed_key = self.simple_hash(key)
+        return self.hash_table[hashed_key].find(key)
+    
+    def __setitem__(self, key, value):
+        self.set_val(key, value)
+
+    def items(self):
+        for linked_list in self.hash_table:
+            current_node = linked_list.head
+            while current_node:
+                yield current_node.key, current_node.value
+                current_node = current_node.next
+    
+    def _str_(self):
+        return "\n".join(str(item) for item in self.hash_table)
+    
+class UserNode:
+    def __init__(self, username):
+        self.username = username
+        self.followers = LinkedList()
+        self.following = LinkedList()
+
+    def add_follower(self, follower_username):
+        if not self.followers.find(follower_username):
+            self.followers.insert(follower_username, None)  
+
+    def add_following(self, following_username):
+        if not self.following.find(following_username):
+            self.following.insert(following_username, None) 
+
+class Graph:
+    def __init__(self):
+        self.nodes = DictionaryLinkedList()
+
+    def add_node(self, username):
+        if not self.nodes.find(username):
+            self.nodes.insert(username, UserNode(username))
+
+    def get_node(self, username):
+        return self.nodes.find(username)
+
+    def add_edge(self, from_username, to_username):
+        from_node = self.get_node(from_username)
+        to_node = self.get_node(to_username)
+        if from_node and to_node:
+           
+            from_node.add_following(to_username)
+           
+            to_node.add_follower(from_username)
+
+
+    def has_node(self, node):
+        return node in self.nodes
+
+    def __str__(self):
+        return str(self.nodes)
+    
+
+class SetNode:
+    def __init__(self, value):
+        self.value = value
+        self.next = None
+
+class MySet:
+    def __init__(self):
+        self.head = None
+
+    def add(self, element):
+        if not self.contains(element):
+            new_node = SetNode(element)
+            new_node.next = self.head
+            self.head = new_node
+
+    def contains(self, element):
+        current = self.head
+        while current:
+            if current.value == element:
+                return True
+            current = current.next
+        return False
+
+    def __iter__(self):
+        current = self.head
+        while current:
+            yield current.value
+            current = current.next
+
+from data_structures import DictionaryLinkedList, MySet,HashTable
+import re
+
+def dfs_all_users_by_regions(users_hash_table):
+    region_count = DictionaryLinkedList()  
+
+    def dfs(username, visited):
+        if username in visited:
+            return
+        visited.add(username)
+
+        user = users_hash_table.get_val(username)
+        if user is None:
+            return
+
+        region = user.region
+        current_count = region_count.get_val(region)
+        if current_count is None:
+            region_count.insert(region, 1)
+        else:
+            region_count.update_val(region, current_count + 1)
+
+        for following_username in user.following:
+            dfs(following_username, visited)
+
+    visited = MySet()
+    for username in users_hash_table:
+        dfs(username, visited)
+
+    return region_count
+
+def extract_hashtags(tweet_text):
+    hashtags = re.findall(r'#\w+', tweet_text)
+    return hashtags
+
+
+
+class RegionHashtags:
+    def __init__(self):
+        self.hashtags = HashTable(50) 
+
+    def add_hashtag(self, hashtag):
+        current_count = self.hashtags.get_val(hashtag)
+        if current_count is None:
+            self.hashtags.insert(hashtag, 1)
+        else:
+            self.hashtags.insert(hashtag, current_count + 1)
+
+    def get_hashtags(self):
+        return self.hashtags
+from heapq import nlargest
+
+def dfs_all_users_by_regions(users_hash_table):
+    region_count = DictionaryLinkedList()  
+
+    def dfs(username, visited):
+        if visited.contains(username): 
+            return
+        visited.add(username)
+
+        user = users_hash_table.get_val(username)
+        if user is None:
+            return
+
+        region = user.region
+        current_count = region_count.get_val(region)
+        if current_count is None:
+            region_count.insert(region, 1)
+        else:
+            region_count.update_val(region, current_count + 1)
+
+        for following_username in user.following:
+            dfs(following_username, visited)
+
+    visited = MySet()
+    for username in users_hash_table:
+        dfs(username, visited)
+
+    return region_count
+
+
+def process_regions_and_hashtags(users_hash_table):
+    regions_hashtags = DictionaryLinkedList()
+
+    users_linked_list = users_hash_table.get_all_values_as_linked_list()
+    current_node = users_linked_list.head
+
+    while current_node:
+        user = current_node.value
+        region = user.region
+        tweet_node = user.tweets.head
+
+        region_hashtags = regions_hashtags.find(region)
+        if region_hashtags is None:
+            region_hashtags = HashTable(50)
+            regions_hashtags.insert(region, region_hashtags)
+
+        while tweet_node:
+            tweet_text = tweet_node.value
+            hashtags_in_tweet = MySet() 
+            for hashtag in extract_hashtags(tweet_text):
+                hashtags_in_tweet.add(hashtag)
+            for hashtag in hashtags_in_tweet:
+                current_count = region_hashtags.get_val(hashtag)
+                if current_count is None:
+                    region_hashtags.set_val(hashtag, 1)
+                else:
+                    region_hashtags.set_val(hashtag, current_count + 1)
+            tweet_node = tweet_node.next
+
+        current_node = current_node.next
+
+    # Dosyaya yaz
+    with open('region_analysis.txt', 'w', encoding='utf-8') as file:
+        for region, region_hashtags in regions_hashtags.items():
+            file.write(f"Region: {region}\n")
+            # Her bölge için en popüler 10 hashtag bul ve yazdır
+            top_hashtags = nlargest(10, region_hashtags.items(), key=lambda item: item[1])
+            for hashtag, count in top_hashtags:
+                file.write(f"  {hashtag}: {count}\n")
+
+from collections import Counter
+import re
+from data_structures import HashTable,DictionaryLinkedList,LinkedList
+
+
+def get_top_words(linked_list, num_top_words=3):
+    word_count = Counter()
+    current_node = linked_list.head
+    while current_node:
+        words = re.findall(r'\w+', current_node.value.lower())
+        word_count.update(words)
+        current_node = current_node.next
+    return word_count.most_common(num_top_words)
+
+def insert_user_to_interests_hash_table(interests_hash_table, interest, username):
+    if interest not in interests_hash_table:
+        interests_hash_table[interest] = HashTable(10)
+    interest_hash_table = interests_hash_table[interest]
+
+    if not interest_hash_table.get_val(username):
+        interest_hash_table.set_val(username, None)
+
+def oneri_uret(ilgi_alani_hash_tables, users_hash_table):
+    oneriler = DictionaryLinkedList()
+
+    for ilgi_alani, hash_table in ilgi_alani_hash_tables.items():
+        ilgi_alani_onerileri = LinkedList()
+
+        for user_key in hash_table:
+            user = users_hash_table.get_val(user_key)
+            user_following = user.following  
+            user_followers = user.followers  
+
+            # Diğer kullanıcılarla karşılaştır
+            for other_user_key in hash_table:
+                if user_key != other_user_key:
+                    other_user = users_hash_table.get_val(other_user_key)
+                    other_user_following = other_user.following
+                    other_user_followers = other_user.followers
+
+                    # Öneri koşulları
+                    if other_user_key not in user_following:
+                        ortak_takipciler = set(user_followers).intersection(set(other_user_followers))
+                        if ortak_takipciler:
+                            ilgi_alani_onerileri.insert(other_user_key, None)
+                        else:
+                            ilgi_alani_onerileri.insert(other_user_key, None)
+
+        oneriler.insert(ilgi_alani, ilgi_alani_onerileri)
+
+    return oneriler
+
+    
+import json
+from data_structures import HashTable, MyLinkedList
+from utils import create_users_from_json, create_graph_from_users
+from interests_utils import get_top_words,insert_user_to_interests_hash_table,oneri_uret
+
+def extract_interests_and_add_to_hashtable(users_hash_table, interests_hash_tables):
+    users_linked_list = users_hash_table.get_all_values_as_linked_list()
+    current_node = users_linked_list.head
+    while current_node:
+        user = current_node.value
+        tweets_text = MyLinkedList()
+        tweet_node = user.tweets.head
+        while tweet_node:
+            tweets_text.append(tweet_node.value)
+            tweet_node = tweet_node.next
+
+        top_words = get_top_words(tweets_text)
+        for word, _ in top_words:
+            insert_user_to_interests_hash_table(interests_hash_tables, word, user.username)
+
+        current_node = current_node.next
+
+def write_interests_to_file(interests_hash_tables, file_name):
+    with open(file_name, 'w', encoding='utf-8') as file:
+        for interest in interests_hash_tables:
+            users_linked_list = interests_hash_tables[interest]
+            file.write(f"İlgi Alanı: {interest}\n")
+            if users_linked_list:
+                for user_key_node in users_linked_list:
+                    file.write(f"  Kullanıcı: {user_key_node}\n")
+
+def write_recommendations_to_file(interests_hash_tables, users_hash_table, file_name):
+    oneriler = oneri_uret(interests_hash_tables, users_hash_table)
+    with open(file_name, 'w', encoding='utf-8') as file:
+        file.write("\nÖnerilen Kullanıcı Analizi:\n")
+        for ilgi_alani in interests_hash_tables:
+            interest_users_list = interests_hash_tables.get_val(ilgi_alani)
+            if interest_users_list:
+                file.write(f"\nİlgi Alanı Analizi: {ilgi_alani}\n")
+                for user_key_node in interest_users_list:
+                    user_key = user_key_node.key if hasattr(user_key_node, 'key') else user_key_node
+                    user = users_hash_table.get_val(user_key)
+                    if user:
+                        user_following = [follower_node for follower_node in user.following]
+                        file.write(f"Kullanıcı: {user_key}\n")
+                        file.write("Önerilen kullanıcılar:\n")
+                        ilgi_alani_onerileri = oneriler.find(ilgi_alani)
+                        if ilgi_alani_onerileri:
+                            for recommendation_node in ilgi_alani_onerileri:
+                                recommendation_key = recommendation_node
+                                if recommendation_key != user_key and recommendation_key not in user_following:
+                                    file.write(f"    - {recommendation_key}\n\n")
+
+
+from data_structures import LinkedList
+
+class User:
+    def __init__(self, username, full_name, followers_count, following_count, language, region):
+        self.username = username
+        self.full_name = full_name
+        self.followers_count = followers_count
+        self.following_count = following_count
+        self.language = language
+        self.region = region
+        self.tweets = LinkedList()  
+        self.following = LinkedList()  
+        self.followers = LinkedList()  
+
+    def add_tweet(self, tweet_content):
+        self.tweets.insert(self.username, tweet_content)
+
+    def add_following(self, user):
+        self.following.insert(user, user)  
+
+    def add_follower(self, user):
+        self.followers.insert(user, user)
+
+
+from user_model import User
+from data_structures import HashTable, Graph
+
+import json
+def create_users_from_json(json_data, users_hash_table):
+    # İlk olarak, tüm kullanıcıları oluştur ve HashTable'a ekle
+    for user_data in json_data:
+        user = User(
+            username=user_data['username'],
+            full_name=user_data['name'],
+            followers_count=user_data['followers_count'],
+            following_count=user_data['following_count'],
+            language=user_data['language'],
+            region=user_data['region']
+        )
+        # Tweetleri ekle
+        for tweet in user_data['tweets']:
+            user.add_tweet(tweet)
+        # Takip edilen kullanıcıları ekle
+        for following_username in user_data.get('following', []):
+            user.add_following(following_username)
+        # Takipçi kullanıcıları ekle
+        for follower_username in user_data.get('followers', []):
+            user.add_follower(follower_username)
+        
+        users_hash_table.set_val(user.username, user)
+
+    return users_hash_table
+
+def create_graph_from_users(users_hash_table):
+    graph = Graph()
+    for i in range(users_hash_table.size):
+        current_list = users_hash_table.hash_table[i]
+        current_node = current_list.head
+        while current_node:
+            user = current_node.value
+
+            # Kullanıcı düğümünü ekle
+            if not graph.has_node(user.username):
+                graph.add_node(user.username)
+            
+            # Kullanıcının takip ettiği kişiler için kenarlar ekle
+            following_node = user.following.head
+            while following_node:
+                if not graph.has_node(following_node.key):
+                    graph.add_node(following_node.key)
+                graph.add_edge(user.username, following_node.key)
+                following_node = following_node.next
+
+            # Kullanıcının takipçileri için kenarlar ekle
+            follower_node = user.followers.head
+            while follower_node:
+                if not graph.has_node(follower_node.key):
+                    graph.add_node(follower_node.key)
+                graph.add_edge(follower_node.key, user.username)
+                follower_node = follower_node.next
+
+            current_node = current_node.next
+    return graph
+
+
+import matplotlib.pyplot as plt
+import networkx as nx
+
+def visualize_hash_table(hash_table):
+    table_size = hash_table.size
+    fig, ax = plt.subplots(figsize=(10, 5))
+
+    hash_table_data = [['' for _ in range(table_size)] for _ in range(table_size)]
+
+    for i, linked_list in enumerate(hash_table.hash_table):
+        current_node = linked_list.head
+        while current_node:
+            key = hash_table.simple_hash(current_node.key)
+            hash_table_data[i][key] = current_node.key
+            current_node = current_node.next
+
+    ax.imshow([[1 if value else 0 for value in row] for row in hash_table_data], cmap="Blues", aspect="auto")
+
+    for i in range(table_size):
+        for j in range(table_size):
+            text = hash_table_data[j][i]
+            ax.text(i, j, text, ha='center', va='center')
+
+    ax.set_xticks(range(table_size))
+    ax.set_yticks(range(table_size))
+    ax.set_xticklabels(range(table_size))
+    ax.set_yticklabels(range(table_size))
+    ax.set_xlabel('Hashed Key')
+    ax.set_ylabel('LinkedList Index')
+    ax.set_title('Hash Table Visualization')
+
+    plt.show()
+
+
+def visualize_user_graph_with_networkx(graph, username):
+    G = nx.DiGraph()
+
+    if graph.has_node(username):
+        user_node = graph.get_node(username)
+        G.add_node(username) 
+
+        following_node = user_node.following.head
+        while following_node:
+            G.add_node(following_node.key)
+            G.add_edge(username, following_node.key)  
+            following_node = following_node.next
+
+        
+        follower_node = user_node.followers.head
+        while follower_node:
+            G.add_node(follower_node.key)
+            G.add_edge(follower_node.key, username)  
+            follower_node = follower_node.next
+
+       
+        plt.figure(figsize=(10, 10))  
+        nx.draw(G, with_labels=True, node_color='lightblue', edge_color='gray', node_size=500, font_size=12)
+        plt.show()
+    else:
+        print(f"Graph does not contain user: {username}")
+
