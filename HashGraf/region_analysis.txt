@@ -1,0 +1,88 @@
+Region: ES
+  #arbitration: 2
+  #virtualreality: 2
+  #interiordesign: 2
+  #environment: 1
+  #mathematics: 1
+  #educationjournalism: 1
+  #blues: 1
+  #marketing: 1
+  #arbitration: 1
+  #machinelearning: 1
+Region: SV
+  #robotics: 2
+  #arbitration: 2
+  #machinelearning: 2
+  #history: 2
+  #webdevelopment: 1
+  #opera: 1
+  #wildlifeconservation: 1
+  #robotics: 1
+  #retail: 1
+  #behavioraleconomics: 1
+Region: KG
+  #ecology: 2
+  #branding: 2
+  #music: 2
+  #theatre: 2
+  #genomics: 2
+  #environment: 1
+  #art: 1
+  #macroeconomics: 1
+  #marketing: 1
+  #webdesign: 1
+Region: VE
+  #filmmaking: 2
+  #familylaw: 2
+  #podcasting: 2
+  #choralmusic: 2
+  #filmmaking: 1
+  #publicpolicy: 1
+  #augmentedreality: 1
+  #manga: 1
+  #urbaneconomics: 1
+  #digitaljournalism: 1
+Region: IS
+  #educationjournalism: 2
+  #SEM: 2
+  #countrymusic: 2
+  #sciencejournalism: 2
+  #banking: 2
+  #cinema: 2
+  #wildlifeconservation: 1
+  #manga: 1
+  #augmentedreality: 1
+  #art: 1
+Region: LR
+  #sculpture: 2
+  #macroeconomics: 2
+  #travel: 2
+  #taxlaw: 2
+  #fashionjournalism: 2
+  #sounddesign: 2
+  #drawing: 2
+  #civillitigation: 2
+  #immunology: 2
+  #printjournalism: 2
+Region: ZA
+  #manga: 3
+  #geography: 3
+  #criminallaw: 3
+  #investment: 3
+  #psychology: 2
+  #manga: 2
+  #internationaltrade: 2
+  #blues: 2
+  #agriculture: 2
+  #auditing: 2
+Region: TZ
+  #marinebiology: 2
+  #technologyjournalism: 2
+  #multimediajournalism: 2
+  #environment: 1
+  #wildlifeconservation: 1
+  #psychology: 1
+  #urbaneconomics: 1
+  #webdesign: 1
+  #publicrelations: 1
+  #familylaw: 1

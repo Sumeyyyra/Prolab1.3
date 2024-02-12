@@ -1,0 +1,33 @@
+ # HashTable'daki tüm kullanıcıları LinkedList olarak al
+    #users_linked_list = users_hash_table.get_all_values_as_linked_list()
+
+    # LinkedList'teki tüm kullanıcıları işle
+    # current_node = users_linked_list.head
+    # while current_node:
+    #     user = current_node.value
+    #     print(f"Kullanıcı Adı: {user.username}, Ad-Soyad: {user.full_name}")
+    #     print(f"Takipçi Sayısı: {user.followers_count}, Takip Edilen Sayısı: {user.following_count}")
+    #     print(f"Dil: {user.language}, Bölge: {user.region}")
+
+    #     print("Tweetler:")
+    #     current_tweet = user.tweets.head
+    #     while current_tweet:
+    #         print(f" - {current_tweet.value}")
+    #         current_tweet = current_tweet.next
+
+    #     print("Takip Edilenler:")
+    #     current_following = user.following.head
+    #     while current_following:
+    #         print(f" - {current_following.value}")
+    #         current_following = current_following.next
+
+    #     print("Takipçiler:")
+    #     current_follower = user.followers.head
+    #     while current_follower:
+    #         print(f" - {current_follower.value}")
+    #         current_follower = current_follower.next
+
+    #     print()
+
+    #     # Sonraki kullanıcıya geç
+    #     current_node = current_node.next
